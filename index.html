@@ -378,7 +378,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       </section>
       <section class="content-grid">
         <div class="panel">
-          <div class="panel-head"><div><h2 id="listHeading">VIN-wise task list</h2><p id="listSubheading">Each VIN has a standard IPQC checklist, plus separate other tasks</p></div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="secondary-btn" id="addOtherTaskBtn">＋ Other task</button><button class="primary-btn" id="addVinBtn">＋ Add VIN</button></div></div>
+          <div class="panel-head"><div><h2 id="listHeading">VIN-wise task list</h2><p id="listSubheading">Each VIN has a standard IPQC checklist, plus separate other tasks</p></div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="secondary-btn" id="addOtherTaskBtn">＋ Other task</button><button class="secondary-btn" id="removeVinBtn">− Remove VIN</button><button class="primary-btn" id="addVinBtn">＋ Add VIN</button></div></div>
           <div class="toolbar">
             <div class="search"><input id="searchInput" type="search" placeholder="Search tasks or notes…"></div>
             <select id="priorityFilter" aria-label="Filter by priority"><option value="all">All priorities</option><option>High</option><option>Medium</option><option>Low</option></select>
@@ -523,6 +523,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   function closeModal(){$('modalBackdrop').classList.remove('show');}
   $('addOtherTaskBtn').addEventListener('click',()=>openModal());
   $('addVinBtn').addEventListener('click',()=>{$('vinForm').reset();$('vinBackdrop').classList.add('show');$('newVin').focus();});
+  $('removeVinBtn').addEventListener('click',()=>{const entered=prompt('Enter the exact VIN to remove its tasks:');if(entered===null)return;const vin=entered.trim().replace(/\s+/g,'').toUpperCase();if(!vin){showToast('Enter a valid VIN');return;}const matches=tasks.filter(t=>String(t.vin||'').trim().replace(/\s+/g,'').toUpperCase()===vin);if(!matches.length){showToast('VIN not found');return;}if(!confirm(`Remove VIN ${vin} and permanently delete all ${matches.length} associated task${matches.length===1?'':'s'} (including completed tasks)?`))return;tasks=tasks.filter(t=>String(t.vin||'').trim().replace(/\s+/g,'').toUpperCase()!==vin);expandedVINs.delete(vin);save();render();showToast(`VIN removed · ${matches.length} tasks deleted`);});
   $('cancelVinBtn').addEventListener('click',()=>$('vinBackdrop').classList.remove('show'));
   $('vinBackdrop').addEventListener('click',e=>{if(e.target===$('vinBackdrop'))$('vinBackdrop').classList.remove('show');});
   const standardChecklist=['Product Check List','Config','120 Test','Torque Curve','4 Min','PDI','ELO Dyno','Road Test','Rework (PDI)'];
