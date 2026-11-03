@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Raptee IPQC — Team Task Tracker</title>
+<style>
+:root {
+  --site-primary: #d62828;
+  --site-on-primary: #ffffff;
+  --site-secondary: #fff0ef;
+  --site-on-secondary: #a51f1f;
+  --site-background: #fffafa;
+  --site-on-background: #231b1b;
+  --site-font-body: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --site-font-heading: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --site-heading-scale: 1;
+  --site-spacing-scale: 1;
+  --site-radius-scale: 1;
+  --site-decoration-opacity: 1;
+  color-scheme: light dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--site-font-body); background: var(--site-background); color: var(--site-on-background); }
+button, input, select, textarea { font: inherit; }
+.app {
+  min-height: 100vh;
+  width: 100%;
+  border-radius: 0;
+  background-color: light-dark(var(--site-background), #171313);
+  color: light-dark(var(--site-on-background), #fff5f4);
+}
+.shell { display: grid; grid-template-columns: 238px minmax(0, 1fr); min-height: 100vh; }
+.sidebar {
+  background: light-dark(#ffffff, #151f30);
+  border-right: 1px solid light-dark(#e5eaf2, #29364a);
+  padding: calc(25px * var(--site-spacing-scale)) 17px;
+  display: flex; flex-direction: column; gap: 28px;
+}
+.brand { display:flex; align-items:center; gap:11px; padding: 0 8px; font-weight:800; letter-spacing:-.5px; font-size:19px; }
+.brand-mark { width:34px; height:34px; border-radius:11px; background:#d62828; color:white; display:grid; place-items:center; font-weight:900; box-shadow:0 5px 12px #d6282828; }
+.nav-label { color:light-dark(#8490a3,#8291a8); text-transform:uppercase; font-size:10px; letter-spacing:1.4px; font-weight:800; padding:0 10px; margin-bottom:7px; }
+.workspace-toggle { display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none; }
+.workspace-toggle:focus-visible { outline:2px solid #2aaeb6; outline-offset:3px; }
+.workspace-chevron { font-size:13px; transition:transform .18s ease; }
+.workspace-nav.collapsed { display:none; }
+.workspace-toggle[aria-expanded="false"] .workspace-chevron { transform:rotate(-90deg); }
+.shell.sidebar-collapsed { grid-template-columns:0 minmax(0,1fr); }
+.shell.sidebar-collapsed .sidebar { display:none; }
+.shell.sidebar-collapsed main { grid-column:1/-1; }
+.menu-toggle { margin-bottom:15px; }
+.menu-toggle { border:1px solid var(--color-border-strong); background:var(--color-surface); color:var(--site-on-background); width:38px; height:38px; border-radius:7px; display:grid; place-items:center; cursor:pointer; font-size:20px; line-height:1; margin-bottom:15px; }
+.menu-toggle:hover { background:var(--site-secondary); color:var(--site-on-secondary); }
+.nav { display:grid; gap:5px; }
+.nav button { border:0; text-align:left; color:light-dark(#59677c,#aebbd0); background:transparent; border-radius:10px; padding:11px 12px; cursor:pointer; display:flex; align-items:center; gap:12px; font-size:13px; font-weight:650; }
+.nav button.active { background:var(--site-secondary); color:var(--site-on-secondary); }
+.nav .count { margin-left:auto; font-size:11px; opacity:.75; }
+.side-note { margin-top:auto; background:light-dark(#f3f6fc,#1c2a40); border:1px solid light-dark(#e7ecf5,#30415c); border-radius:14px; padding:14px; font-size:11px; color:light-dark(#68768c,#aab8ce); line-height:1.55; }
+.side-note strong { display:block; color:light-dark(#26364e,#e0e8f5); margin-bottom:5px; font-size:12px; }
+main { min-width:0; padding: 30px clamp(18px, 4vw, 48px) 48px; max-width:1500px; width:100%; margin:0 auto; }
+.topbar { display:flex; align-items:center; justify-content:space-between; gap:15px; margin-bottom:29px; }
+.eyebrow { color:#748198; font-size:11px; font-weight:800; letter-spacing:1.3px; text-transform:uppercase; margin-bottom:7px; }
+h1 { font-family:var(--site-font-heading); font-size:calc(28px * var(--site-heading-scale)); letter-spacing:-1px; margin:0; }
+.subhead { color:light-dark(#748198,#9aa9bf); font-size:13px; margin-top:7px; }
+.today-chip { background:light-dark(#fff,#1b283b); border:1px solid light-dark(#e3e9f2,#314158); border-radius:11px; padding:10px 13px; font-size:12px; color:light-dark(#536178,#c1cde0); white-space:nowrap; }
+.stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin-bottom:25px; }
+.stat { background:light-dark(#fff,#182438); border:1px solid light-dark(#e7ebf2,#2a3a52); border-radius:15px; padding:17px 18px; min-width:0; }
+.stat-top { display:flex; justify-content:space-between; align-items:center; color:light-dark(#77849a,#a2b0c5); font-size:12px; font-weight:650; }
+.stat-icon { width:29px; height:29px; display:grid; place-items:center; border-radius:9px; background:var(--site-secondary); color:var(--site-on-secondary); font-size:14px; }
+.stat-value { font-size:28px; font-weight:800; letter-spacing:-1px; margin-top:12px; }
+.stat-foot { color:light-dark(#8b97a9,#8999b1); font-size:11px; margin-top:3px; }
+.content-grid { display:grid; grid-template-columns:minmax(0,1.55fr) minmax(270px,.85fr); gap:18px; align-items:start; }
+.panel { background:light-dark(#fff,#182438); border:1px solid light-dark(#e7ebf2,#2a3a52); border-radius:16px; overflow:hidden; }
+.panel-head { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:19px 20px; border-bottom:1px solid light-dark(#edf0f5,#2a3a52); }
+.panel-head h2 { font-size:15px; margin:0; letter-spacing:-.2px; }
+.panel-head p { color:light-dark(#8a96a8,#9aa9bf); font-size:11px; margin:5px 0 0; }
+.primary-btn { border:0; background:#d62828; color:var(--site-on-primary); border-radius:9px; padding:10px 14px; cursor:pointer; font-size:12px; font-weight:750; box-shadow:0 4px 10px #d6282820; }
+.primary-btn:hover { filter:brightness(1.08); }
+.toolbar { display:flex; gap:9px; padding:13px 18px; border-bottom:1px solid light-dark(#edf0f5,#2a3a52); }
+.search { flex:1; min-width:100px; }
+.search input, .toolbar select { width:100%; background:light-dark(#f7f9fc,#111c2d); color:inherit; border:1px solid light-dark(#e5eaf2,#34445d); border-radius:8px; padding:9px 10px; font-size:12px; outline:none; }
+.task-list { padding:0 18px; }
+.task { display:grid; grid-template-columns:20px minmax(0,1fr) auto; gap:11px; align-items:start; padding:15px 2px; border-bottom:1px solid light-dark(#edf0f5,#2a3a52); }
+.task:last-child { border-bottom:0; }
+.task-check { appearance:none; width:17px; height:17px; border:1.5px solid #aeb9c9; border-radius:5px; margin:2px 0 0; cursor:pointer; position:relative; }
+.task-check:checked { background:var(--site-primary); border-color:var(--site-primary); }
+.task-check:checked:after { content:"✓"; color:white; position:absolute; font-size:12px; left:2px; top:-1px; }
+.task-title { font-size:13px; font-weight:700; line-height:1.4; overflow-wrap:anywhere; }
+.task.done .task-title { text-decoration:line-through; color:light-dark(#9aa4b3,#77869d); }
+.task-meta { display:flex; flex-wrap:wrap; gap:7px; margin-top:7px; color:light-dark(#8a96a8,#91a1b8); font-size:10px; }
+.tag { border-radius:5px; padding:3px 7px; font-weight:700; background:light-dark(#f0f3f8,#26364d); color:light-dark(#68768c,#bdc9da); }
+.priority-high { background:light-dark(#fde9e7,#482c32); color:light-dark(#a83c36,#ffaaa2); }
+.priority-medium { background:light-dark(#fff1d9,#493a25); color:light-dark(#8a5a12,#f4c77b); }
+.priority-low { background:light-dark(#e2f3e9,#203e35); color:light-dark(#286849,#8bd0a9); }
+.task.priority-high { border-left:3px solid #c94e49; padding-left:10px; background:light-dark(#fffafa,#211f2a); }
+.task.priority-medium { border-left:3px solid #d69a38; padding-left:10px; background:light-dark(#fffdf8,#28271f); }
+.task.priority-low { border-left:3px solid #398b68; padding-left:10px; background:light-dark(#f8fcf9,#1c2a2a); }
+.task-actions { display:flex; gap:5px; }
+.icon-btn { border:1px solid light-dark(#e6ebf2,#35445a); background:transparent; color:light-dark(#748198,#aab8ce); border-radius:7px; padding:5px 7px; cursor:pointer; font-size:11px; }
+.icon-btn:hover { background:var(--site-secondary); color:var(--site-on-secondary); }
+.task { cursor:pointer; }
+.task:focus-visible { outline:2px solid var(--color-focus); outline-offset:3px; }
+.task-details { grid-column:2/-1; display:grid; gap:8px; margin:2px 0 3px; padding:12px 14px; background:var(--color-surface-muted); border-left:2px solid var(--site-primary); border-radius:3px; color:var(--color-text-muted); font-size:11px; line-height:1.55; }
+.task-detail-label { color:var(--site-on-background); font-weight:750; margin-right:5px; }
+.task-actions { cursor:default; }
+.vin-group-heading { display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none; padding:15px 4px !important; }
+.vin-group-heading:hover { background:var(--color-surface-muted); }
+.vin-group-heading:focus-visible { outline:2px solid var(--color-focus); outline-offset:2px; }
+.vin-group-name { font-size:13px; font-weight:800; color:var(--site-on-background); letter-spacing:.2px; }
+.vin-group-chevron { color:var(--site-primary); font-size:14px; width:16px; }
+.vin-group-count { margin-left:auto; font-size:10px; color:var(--color-text-muted); font-weight:650; }
+.empty { text-align:center; padding:34px 15px; color:light-dark(#8995a7,#9baac0); font-size:12px; }
+.right-stack { display:grid; gap:18px; }
+.progress-body { padding:19px 20px 21px; }
+.progress-line { display:flex; justify-content:space-between; font-size:12px; color:light-dark(#758197,#a5b2c7); margin-bottom:10px; }
+.progress-line strong { color:light-dark(#25334a,#e3ebf7); }
+.progress-track { height:9px; background:light-dark(#edf1f7,#293950); border-radius:99px; overflow:hidden; }
+.progress-fill { height:100%; width:0; background:linear-gradient(90deg,#d62828,#f28b70); border-radius:99px; transition:width .2s; }
+.progress-caption { color:light-dark(#8995a7,#95a5bc); font-size:11px; margin-top:11px; line-height:1.5; }
+.quick-body { padding:17px 20px 20px; }
+.quick-row { display:flex; align-items:center; justify-content:space-between; padding:9px 0; font-size:12px; color:light-dark(#647188,#aab8ce); border-bottom:1px solid light-dark(#edf0f5,#2a3a52); }
+.quick-row:last-child { border:0; }
+.quick-row strong { color:light-dark(#27364d,#e3ebf7); }
+.modal-backdrop { display:none; position:fixed; inset:0; background:#10182788; z-index:10; padding:20px; align-items:center; justify-content:center; }
+.modal-backdrop.show { display:flex; }
+.modal { width:min(490px,100%); background:light-dark(#fff,#182438); color:light-dark(#182235,#e8edf7); border:1px solid light-dark(#e5eaf2,#34445d); border-radius:17px; padding:22px; box-shadow:0 20px 70px #07122555; }
+.modal h2 { font-size:18px; margin:0 0 5px; }
+.modal p { color:light-dark(#8490a3,#9eacc1); font-size:12px; margin:0 0 18px; }
+.form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.field { display:grid; gap:6px; margin-bottom:12px; }
+.field.full { grid-column:1/-1; }
+.field label { color:light-dark(#647188,#aab8ce); font-size:11px; font-weight:750; }
+.field input, .field select, .field textarea { width:100%; border:1px solid light-dark(#dfe6f0,#3a4a62); background:light-dark(#f8fafd,#111c2d); color:inherit; border-radius:8px; padding:10px; font-size:12px; outline:none; }
+.field textarea { min-height:65px; resize:vertical; }
+.modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:7px; }
+.secondary-btn { border:1px solid light-dark(#dfe6f0,#3a4a62); background:transparent; color:inherit; border-radius:9px; padding:9px 13px; cursor:pointer; font-size:12px; }
+.toast { position:fixed; bottom:22px; right:22px; background:#17253a; color:#fff; padding:11px 15px; border-radius:9px; font-size:12px; opacity:0; transform:translateY(8px); transition:.2s; pointer-events:none; z-index:20; }
+.toast.show { opacity:1; transform:translateY(0); }
+@media(max-width:900px) { .shell{grid-template-columns:1fr}.shell .sidebar{display:flex;position:fixed;inset:0 auto 0 0;width:min(280px,85vw);z-index:30;overflow-y:auto;box-shadow:12px 0 35px #0003;transform:translateX(-105%);transition:transform .22s ease}.shell:not(.sidebar-collapsed) .sidebar{transform:translateX(0)}.shell.sidebar-collapsed .sidebar{display:flex;transform:translateX(-105%)}.content-grid{grid-template-columns:1fr} }
+@media(max-width:600px) { main{padding:22px 14px 35px}.stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.stat{padding:13px}.stat-value{font-size:24px}.topbar{align-items:flex-start;flex-direction:column}.toolbar{flex-wrap:wrap}.toolbar select{width:auto;flex:1}.task{grid-template-columns:20px minmax(0,1fr)}.task-actions{grid-column:2}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto} }
+/* Minimalism & Swiss Style semantic theme */
+:root {
+  --site-primary:#d62828;
+  --site-on-primary:#ffffff;
+  --site-secondary:#fff0ef;
+  --site-on-secondary:#a51f1f;
+  --site-background:#fffafa;
+  --site-on-background:#231b1b;
+  --site-font-body:"Helvetica Neue",Helvetica,Arial,sans-serif;
+  --site-font-heading:"Helvetica Neue",Helvetica,Arial,sans-serif;
+  --color-surface:#ffffff;
+  --color-surface-muted:#f1f1ef;
+  --color-border:#dededb;
+  --color-border-strong:#a8a8a3;
+  --color-text-muted:#62625e;
+  --color-text-subtle:#777772;
+  --color-focus:#1459c7;
+  --radius-sm:3px;
+  --radius-md:5px;
+  --shadow-none:none;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:20px; --space-6:24px;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme:dark) {
+  :root {
+    --site-primary:#ff6666; --site-on-primary:#ffffff;
+    --site-secondary:#3b2020; --site-on-secondary:#ffe8e6;
+    --site-background:#171313; --site-on-background:#fff5f4;
+    --color-surface:#241b1b; --color-surface-muted:#302323;
+    --color-border:#493333; --color-border-strong:#806060;
+    --color-text-muted:#d0baba; --color-text-subtle:#b99f9f;
+  }
+}
+body,.app { background:var(--site-background); color:var(--site-on-background); }
+.sidebar,.stat,.panel,.modal,.today-chip { background:var(--color-surface); border-color:var(--color-border); box-shadow:none; }
+.brand { font-size:18px; letter-spacing:-.7px; }
+.brand-mark { border-radius:var(--radius-sm); background:var(--site-primary); box-shadow:none; }
+.nav-label { color:var(--color-text-subtle); letter-spacing:1.6px; }
+.nav button { color:var(--color-text-muted); border-radius:var(--radius-sm); }
+.nav button.active { background:var(--site-secondary); color:var(--site-on-secondary); box-shadow:inset 3px 0 var(--site-primary); }
+.side-note { background:var(--color-surface-muted); border-color:var(--color-border); border-radius:var(--radius-md); color:var(--color-text-muted); }
+.side-note strong,.progress-line strong,.quick-row strong { color:var(--site-on-background); }
+.eyebrow { color:var(--color-text-muted); letter-spacing:1.8px; }
+h1 { font-size:clamp(28px,3vw,38px); font-weight:750; letter-spacing:-1.8px; }
+.subhead,.stat-foot,.panel-head p,.empty,.progress-caption { color:var(--color-text-muted); }
+.today-chip { border-radius:var(--radius-sm); color:var(--color-text-muted); }
+.stats { gap:1px; background:var(--color-border); border:1px solid var(--color-border); }
+.stat { border:0; border-radius:0; padding:18px; }
+.stat-icon { border-radius:var(--radius-sm); background:var(--site-secondary); color:var(--site-on-secondary); }
+.stat-value { font-variant-numeric:tabular-nums; font-weight:750; }
+.content-grid { gap:14px; }
+.panel { border-radius:var(--radius-md); }
+.panel-head { padding:18px 20px; border-bottom-color:var(--color-border); }
+.panel-head h2 { font-size:14px; font-weight:750; letter-spacing:-.3px; }
+.primary-btn { background:var(--site-primary); color:var(--site-on-primary); border-radius:var(--radius-sm); box-shadow:none; font-weight:750; }
+.primary-btn:hover { filter:brightness(.94); }
+.toolbar,.task,.quick-row { border-color:var(--color-border); }
+.search input,.toolbar select,.field input,.field select,.field textarea { background:var(--color-surface); border-color:var(--color-border-strong); border-radius:var(--radius-sm); color:var(--site-on-background); }
+.task.priority-high,.task.priority-medium,.task.priority-low { background:var(--color-surface); }
+.task.priority-high { border-left-color:#d62828; }
+.task.priority-medium { border-left-color:#a66b00; }
+.task.priority-low { border-left-color:#26734d; }
+.tag { border-radius:2px; background:var(--color-surface-muted); color:var(--color-text-muted); }
+.priority-high { background:#fbe9e7; color:#92251f; }
+.priority-medium { background:#fff0d4; color:#704600; }
+.priority-low { background:#e5f2e9; color:#205b3d; }
+.task.done .task-title { color:var(--color-text-subtle); }
+.icon-btn,.secondary-btn { border-color:var(--color-border-strong); border-radius:var(--radius-sm); color:var(--color-text-muted); }
+.icon-btn:hover { background:var(--site-secondary); color:var(--site-on-secondary); }
+.progress-track { background:var(--color-surface-muted); border-radius:0; }
+.progress-fill { background:var(--site-primary); border-radius:0; }
+.progress-line,.quick-row { color:var(--color-text-muted); }
+.modal { border-radius:var(--radius-md); box-shadow:0 18px 60px #0003; }
+.modal-backdrop { background:#0008; }
+.field label { color:var(--color-text-muted); }
+.toast { background:#171717; border:1px solid #444; border-radius:var(--radius-sm); }
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible { outline:3px solid var(--color-focus); outline-offset:2px; }
+button:disabled { cursor:not-allowed; opacity:.55; }
+@media (prefers-color-scheme:dark) {
+  .stat-top,.task-meta,.modal p,.field label { color:var(--color-text-muted); }
+  .task-title,.task.done .task-title { color:var(--site-on-background); }
+  .task.done .task-title { color:var(--color-text-subtle); }
+  .task-check { border-color:#a3a39d; }
+  .priority-high { background:#482522; color:#ffb4ad; }
+  .priority-medium { background:#46371f; color:#f5d18b; }
+  .priority-low { background:#203b2d; color:#a6dfba; }
+  .task.priority-high { border-left-color:#ef7770; }
+  .task.priority-medium { border-left-color:#e3ad4d; }
+  .task.priority-low { border-left-color:#69b88a; }
+  .toast { background:#f5f5f2; color:#171717; border-color:#f5f5f2; }
+}
+@media(max-width:900px) { .stats { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:600px) { .stats { gap:1px; } .stat { padding:13px; } .panel-head { align-items:flex-start; } .task-actions { gap:7px; } }
+/* Editorial dashboard polish */
+body,.app { background:radial-gradient(ellipse at 92% 0%,#fce9e5 0,transparent 27%),var(--site-background); }
+main { padding-top:38px; }
+.sidebar { background:#211616; border-right:0; color:#fff5f4; }
+.brand { color:#fff; font-size:19px; }
+.brand-mark { background:#d62828; color:#fff; width:37px; height:37px; font-size:17px; }
+.nav-label { color:#92928d; }
+.nav button { color:#c3c3bd; transition:background .18s ease,color .18s ease,transform .18s ease; }
+.nav button:hover { background:#292929; color:#fff; transform:translateX(2px); }
+.nav button.active { background:#482626; color:#fff; box-shadow:inset 3px 0 #ef5350; }
+.nav .count { color:#e6aaa5; }
+.side-note { background:#302020; border-color:#493333; color:#e0caca; }
+.side-note strong { color:#fff; }
+.eyebrow { display:flex; align-items:center; gap:9px; }
+.eyebrow:before { content:""; display:inline-block; width:22px; height:3px; background:#d62828; }
+h1 { font-size:clamp(30px,3.4vw,42px); letter-spacing:-2px; line-height:1.08; }
+.subhead { font-size:14px; }
+.today-chip { padding:11px 15px; border-radius:99px; background:#fff; box-shadow:0 5px 18px #d6282810; }
+.today-chip { background:#d62828; border-color:#d62828; color:#fff; box-shadow:0 5px 18px #d6282820; }
+.stats { gap:12px; background:transparent; border:0; }
+.stat { border:1px solid var(--color-border); border-radius:8px; padding:19px; box-shadow:0 4px 16px #17171708; transition:transform .18s ease,box-shadow .18s ease; }
+.stat:hover { transform:translateY(-3px); box-shadow:0 10px 24px #17171712; }
+.stat-icon { width:34px; height:34px; font-size:15px; }
+.stat:nth-child(1) .stat-icon { background:#fbe9e7; color:#a52a25; }
+.stat:nth-child(2) .stat-icon { background:#fff0d4; color:#805300; }
+.stat:nth-child(3) .stat-icon { background:#e5f2e9; color:#205b3d; }
+.stat:nth-child(4) .stat-icon { background:#eee9f8; color:#634a91; }
+.stat-value { font-size:32px; margin-top:15px; }
+.content-grid { gap:17px; }
+.panel { border-radius:8px; box-shadow:0 5px 20px #17171708; }
+.panel-head { padding:20px 21px; }
+.panel-head h2 { font-size:15px; }
+.primary-btn { padding:11px 16px; transition:transform .16s ease,background .16s ease; }
+.primary-btn:hover { transform:translateY(-1px); background:#b91f1f; }
+.toolbar { padding:14px 18px; }
+.search input,.toolbar select { min-height:39px; }
+.task { padding-top:17px; padding-bottom:17px; transition:background .16s ease; }
+.task:hover { background:var(--color-surface-muted); }
+.task-title { font-size:13.5px; }
+.task-meta { gap:6px; }
+.tag { padding:4px 8px; }
+.icon-btn { padding:6px 9px; transition:background .16s ease,color .16s ease; }
+.progress-body { padding:22px 21px 23px; }
+.progress-track { height:11px; border-radius:99px; }
+.progress-fill { background:linear-gradient(90deg,#d62828,#f28b70); border-radius:99px; }
+.progress-caption { font-size:12px; }
+.quick-body { padding-top:10px; padding-bottom:12px; }
+.quick-row { padding:12px 0; }
+.modal { border-radius:10px; }
+.modal h2 { letter-spacing:-.5px; }
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible { outline-color:#d62828; }
+@media(max-width:900px) { main { padding-top:26px; } }
+@media(max-width:600px) { .stats { gap:9px; } .stat { border-radius:7px; } .stat-value { font-size:27px; } h1 { letter-spacing:-1.3px; } .today-chip { white-space:normal; } }
+/* Neon palette experiment */
+:root {
+  --site-primary:#7c13a4;
+  --site-on-primary:#ffffff;
+  --site-secondary:#f7e9fb;
+  --site-on-secondary:#5b087c;
+  --site-background:#f7f8ff;
+  --site-on-background:#0b0a4e;
+  --color-focus:#2aaeb6;
+  --color-border:#d9d9ec;
+  --color-border-strong:#aaa9ca;
+  --color-surface-muted:#eef2fb;
+  --color-text-muted:#525b86;
+  --color-text-subtle:#73799b;
+}
+body,.app { background:radial-gradient(ellipse at 92% 0%,#f4dafa 0,transparent 29%),linear-gradient(135deg,#f7f8ff,#eef7fb); color:var(--site-on-background); }
+.sidebar { background:linear-gradient(180deg,#0b0a4e 0%,#0b4784 100%); border-right:0; }
+.brand-mark { background:#ea00d9; color:#fff; box-shadow:0 0 16px #ea00d955; }
+.nav-label { color:#9fc8e7; }
+.nav button { color:#d8e9fb; }
+.nav button:hover { background:#ffffff18; color:#fff; }
+.nav button.active { background:#7c13a4; color:#fff; box-shadow:inset 3px 0 #2aaeb6; }
+.nav .count { color:#9ff4f1; }
+.side-note { background:#0b0a4e88; border-color:#ffffff30; color:#d8e9fb; }
+.side-note strong { color:#fff; }
+.eyebrow:before { background:#ea00d9; }
+.today-chip { background:#7c13a4; border-color:#7c13a4; color:#fff; box-shadow:0 5px 18px #7c13a433; }
+.stat-icon { background:#f7e9fb; color:#7c13a4; }
+.stat:nth-child(1) .stat-icon { background:#f3e4fa; color:#7c13a4; }
+.stat:nth-child(2) .stat-icon { background:#e0f7f7; color:#087e88; }
+.stat:nth-child(3) .stat-icon { background:#e5efff; color:#0b4784; }
+.stat:nth-child(4) .stat-icon { background:#fce5f8; color:#b000a8; }
+.stat-icon { width:38px; height:38px; flex:0 0 38px; border:1px solid #ffffff55; border-radius:11px; display:grid; place-items:center; font-size:19px; line-height:1; box-shadow:0 3px 12px #0b0a4e18; }
+.primary-btn { background:#7c13a4; color:#fff; }
+.primary-btn:hover { background:#5f0c80; }
+.progress-fill { background:linear-gradient(90deg,#7c13a4,#ea00d9,#2aaeb6); }
+.task.priority-high { border-left-color:#ea00d9; }
+.task.priority-medium { border-left-color:#2aaeb6; }
+.task.priority-low { border-left-color:#0b4784; }
+.task-check:checked { background:#7c13a4; border-color:#7c13a4; }
+.task-details { border-left-color:#ea00d9; }
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible { outline-color:#2aaeb6; }
+@media(prefers-color-scheme:dark) {
+  :root { --site-primary:#c45be4; --site-secondary:#382044; --site-on-secondary:#f6d9ff; --site-background:#0b0a24; --site-on-background:#f6f2ff; --color-surface:#151535; --color-surface-muted:#202044; --color-border:#38385f; --color-border-strong:#66668d; --color-text-muted:#c1c2e4; --color-text-subtle:#a0a2cb; }
+  body,.app { background:radial-gradient(ellipse at 92% 0%,#42104f 0,transparent 30%),#0b0a24; }
+  .sidebar { background:linear-gradient(180deg,#07072f,#082d56); }
+  .nav button.active { background:#4a1260; }
+  .today-chip { background:#7c13a4; border-color:#a33bc5; }
+  .stat:nth-child(1) .stat-icon { background:#382044; color:#e5a9f5; }
+  .stat:nth-child(2) .stat-icon { background:#173b48; color:#83e7e5; }
+  .stat:nth-child(3) .stat-icon { background:#182e52; color:#9dc5ff; }
+  .stat:nth-child(4) .stat-icon { background:#45153f; color:#ff9beb; }
+  .stat-icon { border-color:#ffffff24; box-shadow:0 3px 14px #00000035; }
+  .priority-high { background:#48203f; color:#ffb4ed; }
+  .priority-medium { background:#173b48; color:#9ae9e7; }
+  .priority-low { background:#182e52; color:#b2d0ff; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="shell">
+    <aside class="sidebar" id="appSidebar">
+      <div class="brand"><div class="brand-mark">R</div> Raptee IPQC</div>
+      <div>
+        <div class="nav-label workspace-toggle" id="workspaceToggle" role="button" tabindex="0" aria-expanded="true" aria-controls="workspaceNav"><span>Workspace</span><span class="workspace-chevron" aria-hidden="true">▾</span></div>
+        <nav class="nav workspace-nav" id="workspaceNav">
+          <button class="active" data-view="all">▣ <span>All tasks</span><span class="count" id="navAll">0</span></button>
+          <button data-view="today">▦ <span>Today's tasks</span></button>
+          <button data-view="pending">◷ <span>Pending</span><span class="count" id="navPending">0</span></button>
+          <button data-view="completed">☑ <span>Completed</span></button>
+        </nav>
+      </div>
+      <div>
+        <div class="nav-label">Manage</div>
+        <nav class="nav">
+          <button data-view="overdue">⚠ <span>Overdue</span><span class="count" id="navOverdue">0</span></button>
+        </nav>
+      </div>
+      <div class="side-note"><strong>Raptee Energy Private Limited</strong>IPQC Team workspace · Track inspections, testing, quality observations and daily follow-ups.</div>
+    </aside>
+    <main>
+      <header class="topbar">
+        <div><button class="menu-toggle" id="sidebarToggle" type="button" aria-label="Toggle navigation sidebar" aria-expanded="true" aria-controls="appSidebar">☰</button><div class="eyebrow">Raptee Energy Private Limited · IPQC Team</div><h1 id="pageTitle">Daily task overview</h1><div class="subhead">Quality checks, validation activities and team follow-ups in one place.</div></div>
+        <div class="today-chip" id="todayLabel">Today</div>
+      </header>
+      <section class="stats">
+        <div class="stat"><div class="stat-top"><span>Total tasks</span><span class="stat-icon">📅</span></div><div class="stat-value" id="totalStat">0</div><div class="stat-foot">Tasks logged</div></div>
+        <div class="stat"><div class="stat-top"><span>Pending</span><span class="stat-icon">⏰</span></div><div class="stat-value" id="pendingStat">0</div><div class="stat-foot">Still to be completed</div></div>
+        <div class="stat"><div class="stat-top"><span>Completed</span><span class="stat-icon">🎁</span></div><div class="stat-value" id="completedStat">0</div><div class="stat-foot">Successfully closed</div></div>
+        <div class="stat"><div class="stat-top"><span>Overdue</span><span class="stat-icon">🔔</span></div><div class="stat-value" id="overdueStat">0</div><div class="stat-foot">Past due date</div></div>
+      </section>
+      <section class="content-grid">
+        <div class="panel">
+          <div class="panel-head"><div><h2 id="listHeading">VIN-wise task list</h2><p id="listSubheading">Each VIN has a standard IPQC checklist, plus separate other tasks</p></div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="secondary-btn" id="addOtherTaskBtn">＋ Other task</button><button class="primary-btn" id="addVinBtn">＋ Add VIN</button></div></div>
+          <div class="toolbar">
+            <div class="search"><input id="searchInput" type="search" placeholder="Search tasks or notes…"></div>
+            <select id="priorityFilter" aria-label="Filter by priority"><option value="all">All priorities</option><option>High</option><option>Medium</option><option>Low</option></select>
+            <select id="categoryFilter" aria-label="Filter by category"><option value="all">All categories</option><option>Testing</option><option>Inspection</option><option>Documentation</option><option>Meeting</option><option>Follow-up</option><option>Other</option></select>
+          </div>
+          <div class="task-list" id="taskList"></div>
+        </div>
+        <div class="right-stack">
+          <div class="panel">
+            <div class="panel-head"><div><h2>Daily IPQC progress</h2><p>Completion across all logged team activities</p></div></div>
+            <div class="progress-body">
+              <div class="progress-line"><span>Completion rate</span><strong id="progressPercent">0%</strong></div>
+              <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+              <div class="progress-caption" id="progressCaption">Add your first task to start tracking your day.</div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><div><h2>IPQC work summary</h2><p>Quick snapshot of team activities</p></div></div>
+            <div class="quick-body">
+              <div class="quick-row"><span>Due today</span><strong id="dueToday">0</strong></div>
+              <div class="quick-row"><span>High priority pending</span><strong id="highPending">0</strong></div>
+              <div class="quick-row"><span>Completed today</span><strong id="doneToday">0</strong></div>
+              <div class="quick-row"><span>Open tasks</span><strong id="openTasks">0</strong></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+<div class="modal-backdrop" id="modalBackdrop">
+  <form class="modal" id="taskForm">
+    <h2 id="modalTitle">Add an extra task</h2><p>Leave VIN blank to keep this under Other Tasks, or enter a VIN to add it to that vehicle's checklist.</p>
+    <div class="form-grid">
+      <div class="field full"><label for="taskVin">Vehicle VIN number</label><input id="taskVin" maxlength="40" placeholder="Optional — leave blank for an other task" autocomplete="off" style="text-transform:uppercase"></div>
+      <div class="field full"><label for="taskName">Task title *</label><input id="taskName" required maxlength="120" placeholder="e.g. Complete MCU validation"></div>
+      <div class="field"><label for="taskDate">Due date *</label><input id="taskDate" type="date" required></div>
+      <div class="field"><label for="taskPriority">Priority</label><select id="taskPriority"><option>Medium</option><option>High</option><option>Low</option></select></div>
+      <div class="field"><label for="taskCategory">Category</label><select id="taskCategory"><option>Testing</option><option>Inspection</option><option>Documentation</option><option>Meeting</option><option>Follow-up</option><option>Other</option></select></div>
+      <div class="field"><label for="taskStatus">Status</label><select id="taskStatus"><option>Pending</option><option>In Progress</option><option>Completed</option></select></div>
+      <div class="field full"><label for="taskNotes">Notes / work details</label><textarea id="taskNotes" maxlength="500" placeholder="Add observations, updates, or follow-up details…"></textarea></div>
+    </div>
+    <div class="modal-actions"><button type="button" class="secondary-btn" id="cancelBtn">Cancel</button><button type="submit" class="primary-btn">Save task</button></div>
+  </form>
+</div>
+<div class="modal-backdrop" id="vinBackdrop">
+  <form class="modal" id="vinForm">
+    <h2>Add a vehicle VIN</h2><p>A standard IPQC checklist will be created automatically for this vehicle.</p>
+    <div class="field"><label for="newVin">Vehicle VIN number *</label><input id="newVin" required maxlength="40" placeholder="Enter or scan vehicle VIN" autocomplete="off" style="text-transform:uppercase"></div>
+    <div class="modal-actions"><button type="button" class="secondary-btn" id="cancelVinBtn">Cancel</button><button type="submit" class="primary-btn" id="createVinBtn">Create VIN checklist</button></div>
+  </form>
+</div>
+<div class="modal-backdrop" id="completionBackdrop">
+  <form class="modal" id="completionForm">
+    <h2>Complete this task</h2><p>Enter the name of the person who completed this task. Remarks are optional.</p>
+    <div class="field"><label for="completionName">Completed by *</label><input id="completionName" required maxlength="80" placeholder="Enter employee name"></div>
+    <div class="field"><label for="completionRemarks">Remarks (optional)</label><textarea id="completionRemarks" maxlength="500" placeholder="Add completion remarks or observations…"></textarea></div>
+    <div class="modal-actions"><button type="button" class="secondary-btn" id="cancelCompletionBtn">Cancel</button><button type="button" class="primary-btn" id="confirmCompletionBtn">Confirm completion</button></div>
+  </form>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const today = new Date();
+  const dateKey = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const todayKey = dateKey(today);
+  $('todayLabel').textContent = today.toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+  $('taskDate').value = todayKey;
+  let tasks = [];
+  try { tasks = JSON.parse(localStorage.getItem('workday_tasks_v1') || 'null') || []; } catch { tasks = []; }
+  let view = 'all', editId = null, pendingCompletionTask = null;
+  const expandedVINs = new Set();
+  const save = () => { try { localStorage.setItem('workday_tasks_v1',JSON.stringify(tasks)); } catch {} };
+  const isDone = t => t.status === 'Completed';
+  const isOverdue = t => !isDone(t) && t.date < todayKey;
+  const showToast = message => { $('toast').textContent=message; $('toast').classList.add('show'); setTimeout(()=>$('toast').classList.remove('show'),1800); };
+  function render() {
+    const total=tasks.length, completed=tasks.filter(isDone).length, pending=tasks.filter(t=>!isDone(t)).length, overdue=tasks.filter(isOverdue).length;
+    $('totalStat').textContent=total; $('pendingStat').textContent=pending; $('completedStat').textContent=completed; $('overdueStat').textContent=overdue;
+    $('navAll').textContent=total; $('navPending').textContent=pending; $('navOverdue').textContent=overdue;
+    const pct=total?Math.round(completed/total*100):0;
+    $('progressPercent').textContent=pct+'%'; $('progressFill').style.width=pct+'%';
+    $('progressCaption').textContent=total?`${completed} of ${total} tasks completed. ${pending} task${pending===1?'':'s'} remain open.`:'Add your first task to start tracking your day.';
+    $('dueToday').textContent=tasks.filter(t=>t.date===todayKey&&!isDone(t)).length;
+    $('highPending').textContent=tasks.filter(t=>t.priority==='High'&&!isDone(t)).length;
+    $('doneToday').textContent=tasks.filter(t=>isDone(t)&&t.completedDate===todayKey).length;
+    $('openTasks').textContent=pending;
+    const titles={all:'Daily task overview',today:"Today's tasks",pending:'Pending tasks',completed:'Completed tasks',overdue:'Overdue tasks'};
+    $('pageTitle').textContent=titles[view]; $('listHeading').textContent=view==='all'?'Task list':titles[view];
+    const vinCount=new Set(tasks.map(t=>(t.vin||'').trim().toUpperCase()).filter(Boolean)).size;
+    $('listSubheading').textContent=`${vinCount} vehicle VIN${vinCount===1?'':'s'} · ${tasks.filter(t=>!t.vin).length} other task${tasks.filter(t=>!t.vin).length===1?'':'s'}`;
+    const q=$('searchInput').value.trim().toLowerCase(), p=$('priorityFilter').value, c=$('categoryFilter').value;
+    let list=tasks.filter(t=>{
+      if(view==='today'&&t.date!==todayKey)return false;
+      if(view==='pending'&&isDone(t))return false;
+      if(view==='completed'&&!isDone(t))return false;
+      if(view==='overdue'&&!isOverdue(t))return false;
+      if(p!=='all'&&t.priority!==p)return false;
+      if(c!=='all'&&t.category!==c)return false;
+      if(q&&!`${t.vin||''} ${t.title} ${t.notes} ${t.category}`.toLowerCase().includes(q))return false;
+      return true;
+    }).sort((a,b)=>(a.date||'').localeCompare(b.date||'')||({High:0,Medium:1,Low:2}[a.priority]-{High:0,Medium:1,Low:2}[b.priority]));
+    $('taskList').innerHTML='';
+    if(!list.length){$('taskList').innerHTML='<div class="empty">No tasks here yet. Add a task or adjust your filters.</div>';return;}
+    const groups=new Map();list.forEach(t=>{const key=(t.vin||'').trim().toUpperCase()||'__OTHER__';if(!groups.has(key))groups.set(key,[]);groups.get(key).push(t);});
+    groups.forEach((group,key)=>{const expanded=expandedVINs.has(key);const heading=document.createElement('div');heading.className='vin-group-heading';heading.tabIndex=0;heading.setAttribute('role','button');heading.setAttribute('aria-expanded',String(expanded));const chevron=document.createElement('span');chevron.className='vin-group-chevron';chevron.textContent=expanded?'▾':'▸';const name=document.createElement('span');name.className='vin-group-name';name.textContent=key==='__OTHER__'?'OTHER TASKS':key;const count=document.createElement('span');count.className='vin-group-count';count.textContent=group.filter(isDone).length+'/'+group.length+' completed';heading.append(chevron,name,count);const toggleGroup=()=>{if(expandedVINs.has(key))expandedVINs.delete(key);else expandedVINs.add(key);render();};heading.addEventListener('click',toggleGroup);heading.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleGroup();}});$('taskList').append(heading);if(!expanded)return;group.forEach(t=>{
+      const row=document.createElement('div'); row.className='task priority-'+t.priority.toLowerCase()+(isDone(t)?' done':''); row.tabIndex=0; row.setAttribute('role','button'); row.setAttribute('aria-expanded','false'); row.setAttribute('aria-label','Show details for '+t.title);
+      const check=document.createElement('input'); check.type='checkbox'; check.className='task-check'; check.checked=isDone(t); check.setAttribute('aria-label','Mark task completed');
+      check.addEventListener('change',()=>{if(check.checked){pendingCompletionTask=t;$('completionName').value=t.completedBy||'';$('completionRemarks').value=t.completionRemarks||'';$('completionBackdrop').classList.add('show');$('completionName').focus();}else{t.status='Pending';delete t.completedDate;delete t.completedBy;delete t.completionRemarks;save();render();showToast('Task reopened');}});
+      const body=document.createElement('div');
+      const title=document.createElement('div'); title.className='task-title'; title.textContent=t.title;
+      const meta=document.createElement('div'); meta.className='task-meta';
+      const vin=document.createElement('span'); vin.className='tag vin-tag'; vin.textContent='VIN: '+(t.vin||'Not assigned'); meta.append(vin);
+      const date=document.createElement('span'); date.textContent=(isOverdue(t)?'Overdue · ':'Due ')+new Date(t.date+'T00:00:00').toLocaleDateString(undefined,{day:'numeric',month:'short'});
+      const priority=document.createElement('span'); priority.className='tag priority-'+t.priority.toLowerCase(); priority.textContent=t.priority;
+      const category=document.createElement('span'); category.className='tag'; category.textContent=t.category;
+      const status=document.createElement('span'); status.className='tag'; status.textContent=t.status;
+      meta.append(date,priority,category,status); if(isDone(t)&&t.completedBy){const owner=document.createElement('span');owner.className='tag';owner.textContent='Completed by: '+t.completedBy;meta.append(owner);} body.append(title,meta);
+      if(t.notes){const note=document.createElement('div');note.style.cssText='font-size:11px;color:var(--muted,#8b97a9);margin-top:6px;line-height:1.4';note.textContent=t.notes;body.append(note);}
+      const actions=document.createElement('div');actions.className='task-actions';
+      if(!isDone(t)){
+        const edit=document.createElement('button');edit.type='button';edit.className='icon-btn';edit.textContent='Edit';edit.addEventListener('click',e=>{e.stopPropagation();openModal(t);});
+        const del=document.createElement('button');del.type='button';del.className='icon-btn';del.textContent='Delete';del.addEventListener('click',e=>{e.stopPropagation();if(confirm('Delete this task?')){tasks=tasks.filter(x=>x.id!==t.id);save();render();showToast('Task deleted');}});
+        actions.append(edit,del);
+      }
+      row.append(check,body,actions);
+      const toggleDetails=()=>{const existing=row.querySelector('.task-details');if(existing){existing.remove();row.setAttribute('aria-expanded','false');return;}const details=document.createElement('div');details.className='task-details';const addDetail=(label,value)=>{const line=document.createElement('div');const strong=document.createElement('span');strong.className='task-detail-label';strong.textContent=label;const content=document.createElement('span');content.textContent=value||'No remarks added.';line.append(strong,content);details.append(line);};addDetail('Task notes:',t.notes);if(isDone(t)){addDetail('Completion remarks:',t.completionRemarks);addDetail('Completed by:',t.completedBy);addDetail('Completed on:',t.completedDate?new Date(t.completedDate+'T00:00:00').toLocaleDateString(undefined,{day:'numeric',month:'long',year:'numeric'}):'Date not recorded');}row.append(details);row.setAttribute('aria-expanded','true');};
+      row.addEventListener('click',e=>{if(e.target.closest('button,input'))return;toggleDetails();});
+      row.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target===row){e.preventDefault();toggleDetails();}});
+      $('taskList').append(row);
+    });});
+  }
+  function openModal(task=null){
+    editId=task?task.id:null; $('modalTitle').textContent=task?'Edit task':'Add an extra task';
+    $('taskVin').value=task?.vin||'';
+    $('taskName').value=task?.title||''; $('taskDate').value=task?.date||todayKey;
+    $('taskPriority').value=task?.priority||'Medium'; $('taskCategory').value=task?.category||'Testing';
+    $('taskStatus').value=task?.status||'Pending'; $('taskNotes').value=task?.notes||'';
+    $('modalBackdrop').classList.add('show'); $('taskName').focus();
+  }
+  function closeModal(){$('modalBackdrop').classList.remove('show');}
+  $('addOtherTaskBtn').addEventListener('click',()=>openModal());
+  $('addVinBtn').addEventListener('click',()=>{$('vinForm').reset();$('vinBackdrop').classList.add('show');$('newVin').focus();});
+  $('cancelVinBtn').addEventListener('click',()=>$('vinBackdrop').classList.remove('show'));
+  $('vinBackdrop').addEventListener('click',e=>{if(e.target===$('vinBackdrop'))$('vinBackdrop').classList.remove('show');});
+  const standardChecklist=['Product Check List','Config','120 Test','Torque Curve','4 Min','PDI','ELO Dyno','Road Test','Rework (PDI)'];
+  $('vinForm').addEventListener('submit',e=>{e.preventDefault();const vin=$('newVin').value.trim().replace(/\s+/g,'').toUpperCase();if(!vin){$('newVin').focus();return;}const alreadyExists=tasks.some(t=>String(t.vin||'').trim().replace(/\s+/g,'').toUpperCase()===vin);if(alreadyExists){showToast('This VIN already exists');$('newVin').focus();return;}const createdAt=Date.now();const newChecklist=standardChecklist.map((title,index)=>({id:`vin-${createdAt}-${index}`,vin,title,date:todayKey,priority:'Medium',category:index===0||index===5?'Inspection':'Testing',status:'Pending',notes:'',checklist:true}));tasks.push(...newChecklist);save();$('vinForm').reset();$('vinBackdrop').classList.remove('show');view='all';document.querySelectorAll('.nav button').forEach(btn=>btn.classList.toggle('active',btn.dataset.view==='all'));$('searchInput').value='';$('priorityFilter').value='all';$('categoryFilter').value='all';render();showToast('VIN created with all 9 checklist tasks');});
+  $('createVinBtn').addEventListener('click',e=>{e.preventDefault();$('vinForm').requestSubmit();});
+  const workspaceToggle=$('workspaceToggle'),workspaceNav=$('workspaceNav');
+  const toggleWorkspace=()=>{const expanded=workspaceToggle.getAttribute('aria-expanded')==='true';workspaceToggle.setAttribute('aria-expanded',String(!expanded));workspaceNav.classList.toggle('collapsed',expanded);};
+  workspaceToggle.addEventListener('click',toggleWorkspace);
+  workspaceToggle.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleWorkspace();}});
+  $('sidebarToggle').addEventListener('click',()=>{const shell=document.querySelector('.shell');const collapsed=shell.classList.toggle('sidebar-collapsed');$('sidebarToggle').setAttribute('aria-expanded',String(!collapsed));});
+  $('cancelBtn').addEventListener('click',closeModal);
+  $('modalBackdrop').addEventListener('click',e=>{if(e.target===$('modalBackdrop'))closeModal();});
+  $('taskForm').addEventListener('submit',e=>{
+    e.preventDefault();
+    const task={id:editId||Date.now(),vin:$('taskVin').value.trim().toUpperCase(),title:$('taskName').value.trim(),date:$('taskDate').value,priority:$('taskPriority').value,category:$('taskCategory').value,status:$('taskStatus').value,notes:$('taskNotes').value.trim()};
+    if(editId){const old=tasks.find(t=>t.id===editId);if(old){task.completedBy=old.completedBy;task.completionRemarks=old.completionRemarks;}}
+    if(task.status==='Completed')task.completedDate=todayKey;
+    if(editId){const old=tasks.find(t=>t.id===editId);if(old?.completedDate&&!task.completedDate)task.completedDate=old.completedDate;tasks=tasks.map(t=>t.id===editId?task:t);}
+    else tasks.unshift(task);
+    save();closeModal();render();showToast(editId?'Task updated':'Task assigned to VIN');
+  });
+  function closeCompletionModal(){pendingCompletionTask=null;$('completionBackdrop').classList.remove('show');render();}
+  $('cancelCompletionBtn').addEventListener('click',closeCompletionModal);
+  $('completionBackdrop').addEventListener('click',e=>{if(e.target===$('completionBackdrop'))closeCompletionModal();});
+  $('confirmCompletionBtn').addEventListener('click',()=>{const name=$('completionName').value.trim();if(!name){$('completionName').setCustomValidity('Please enter the employee name.');$('completionName').reportValidity();$('completionName').addEventListener('input',()=> $('completionName').setCustomValidity(''),{once:true});return;}if(!pendingCompletionTask)return;const task=tasks.find(t=>t.id===pendingCompletionTask.id);if(!task){closeCompletionModal();showToast('Task not found. Please try again.');return;}task.status='Completed';task.completedDate=todayKey;task.completedBy=name;task.completionRemarks=$('completionRemarks').value.trim();save();pendingCompletionTask=null;$('completionBackdrop').classList.remove('show');$('completionForm').reset();render();showToast('Task completed');});
+  document.querySelectorAll('.nav button').forEach(btn=>btn.addEventListener('click',()=>{view=btn.dataset.view;document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b===btn));render();}));
+  ['searchInput','priorityFilter','categoryFilter'].forEach(id=>$(id).addEventListener(id==='searchInput'?'input':'change',render));
+  render();
+})();
+</script>
+</body>
+</html>
