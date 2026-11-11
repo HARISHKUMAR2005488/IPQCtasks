@@ -341,10 +341,13 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   .priority-medium { background:#173b48; color:#9ae9e7; }
   .priority-low { background:#182e52; color:#b2d0ff; }
 }
-</style>
+
+.auth-screen{position:fixed;inset:0;z-index:100;background:#fffafa;display:grid;place-items:center;padding:20px;color:#231b1b}.auth-card{width:min(430px,100%);background:#fff;border:1px solid #e5d9d7;border-radius:14px;padding:28px;box-shadow:0 20px 60px #3b15151a}.auth-card h1{font-size:25px;margin:0 0 8px}.auth-card p{font-size:13px;color:#706565;line-height:1.5;margin:0 0 20px}.auth-card input{width:100%;padding:12px;border:1px solid #d9cecc;border-radius:6px;font:inherit}.auth-status{font-size:12px;color:#a51f1f;min-height:18px;margin:8px 0}.account-bar{display:flex;align-items:center;gap:10px;justify-content:flex-end;font-size:12px;margin-top:8px}.account-bar button{border:1px solid #aaa;background:white;padding:7px 10px;border-radius:5px;cursor:pointer}.migration-banner{display:none;background:#fff4e5;border:1px solid #e7c78f;padding:12px 15px;margin:0 0 16px;border-radius:6px;font-size:12px;color:#684716}.migration-banner button{margin-left:8px;padding:6px 9px;border:0;background:#d62828;color:#fff;border-radius:4px;cursor:pointer}
+
 </head>
 <body>
-<div class="app">
+<div class="auth-screen" id="authScreen"><form class="auth-card" id="loginForm"><div class="brand" style="padding:0;margin-bottom:18px;color:#231b1b"><div class="brand-mark">R</div> Raptee IPQC</div><h1>Team sign in</h1><p>Sign in with your IPQC team account to access the shared live task tracker.</p><div class="field"><label for="loginEmail">Email address</label><input id="loginEmail" type="email" autocomplete="username" required></div><div class="field"><label for="loginPassword">Password</label><input id="loginPassword" type="password" autocomplete="current-password" required></div><div class="auth-status" id="authStatus"></div><button class="primary-btn" type="submit" id="loginButton">Sign in</button></form></div>
+<div class="app" id="trackerApp" style="display:none">
   <div class="shell">
     <aside class="sidebar" id="appSidebar">
       <div class="brand"><div class="brand-mark">R</div> Raptee IPQC</div>
@@ -368,9 +371,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     <main>
       <header class="topbar">
         <div><button class="menu-toggle" id="sidebarToggle" type="button" aria-label="Toggle navigation sidebar" aria-expanded="true" aria-controls="appSidebar">☰</button><div class="eyebrow">Raptee Energy Private Limited · IPQC Team</div><h1 id="pageTitle">Daily task overview</h1><div class="subhead">Quality checks, validation activities and team follow-ups in one place.</div></div>
-        <div class="today-chip" id="todayLabel">Today</div>
+        <div><div class="today-chip" id="todayLabel">Today</div><div class="account-bar"><span id="accountLabel"></span><span id="syncIndicator">● Connecting</span><button id="logoutBtn" type="button">Sign out</button></div></div>
       </header>
-      <section class="stats">
+      <div class="migration-banner" id="migrationBanner">Saved tasks were found on this device. <button id="importLocalBtn" type="button">Import to team cloud</button><button id="dismissImportBtn" type="button" style="background:transparent;color:#684716">Not now</button></div><section class="stats">
         <div class="stat"><div class="stat-top"><span>Total tasks</span><span class="stat-icon">📅</span></div><div class="stat-value" id="totalStat">0</div><div class="stat-foot">Tasks logged</div></div>
         <div class="stat"><div class="stat-top"><span>Pending</span><span class="stat-icon">⏰</span></div><div class="stat-value" id="pendingStat">0</div><div class="stat-foot">Still to be completed</div></div>
         <div class="stat"><div class="stat-top"><span>Completed</span><span class="stat-icon">🎁</span></div><div class="stat-value" id="completedStat">0</div><div class="stat-foot">Successfully closed</div></div>
@@ -440,6 +443,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   </form>
 </div>
 <div class="toast" id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (() => {
   const $ = id => document.getElementById(id);
@@ -448,14 +452,27 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   const todayKey = dateKey(today);
   $('todayLabel').textContent = today.toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short',year:'numeric'});
   $('taskDate').value = todayKey;
-  let tasks = [];
-  try { tasks = JSON.parse(localStorage.getItem('workday_tasks_v1') || 'null') || []; } catch { tasks = []; }
+  let tasks = [], currentUser = null, currentProfile = null, realtimeChannel = null;
   let view = 'all', editId = null, pendingCompletionTask = null;
   const expandedVINs = new Set();
-  const save = () => { try { localStorage.setItem('workday_tasks_v1',JSON.stringify(tasks)); } catch {} };
+  const SUPABASE_URL='https://jbyifrzprofhqrkkwadw.supabase.co';
+  const SUPABASE_PUBLISHABLE_KEY='sb_publishable_WgYIeCa2WXXt5yrdDxberw_Q6MLGXal';
+  const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+  const setSync=m=>$('syncIndicator').textContent='● '+m;
+  const localTasks=()=>{try{return JSON.parse(localStorage.getItem('workday_tasks_v1')||'[]')||[]}catch{return[]}};
+  const toDb=t=>({legacy_id:String(t.id),vin:t.vin||null,title:t.title,task_date:t.date||todayKey,priority:(t.priority||'Medium').toLowerCase(),category:t.category||'Other',status:(t.status||'Pending').toLowerCase(),notes:t.notes||null,checklist:t.checklist??null,completed_at:t.completedDate?new Date(t.completedDate+'T12:00:00').toISOString():null,completed_by:t.completedBy||null,completion_remarks:t.completionRemarks||null,created_by:t.createdBy||currentUser.id});
+  const fromDb=r=>({id:r.legacy_id||r.id,vin:r.vin||'',title:r.title,date:r.task_date,priority:(r.priority||'medium').replace(/^./,x=>x.toUpperCase()),category:r.category||'Other',status:(r.status||'pending').split(' ').map(x=>x.charAt(0).toUpperCase()+x.slice(1)).join(' '),notes:r.notes||'',checklist:r.checklist,completedDate:r.completed_at?r.completed_at.slice(0,10):undefined,completedBy:r.completed_by||'',completionRemarks:r.completion_remarks||'',createdBy:r.created_by||null});
+  const save=async()=>{if(!currentUser)return;setSync('Saving…');const rows=tasks.map(toDb);if(!rows.length){setSync('Live');return;}const {error}=await sb.from('tasks').upsert(rows,{onConflict:'legacy_id'});if(error){console.error(error);setSync('Sync error');showToast('Cloud save failed: '+error.message);}else setSync('Live');};
+  const deleteCloudTasks=async ids=>{if(!currentUser||!ids.length)return;const {error}=await sb.from('tasks').delete().in('legacy_id',ids.map(String));if(error){showToast('Cloud delete failed: '+error.message);await loadCloudTasks();}};
+  async function loadCloudTasks(){setSync('Syncing…');const {data,error}=await sb.from('tasks').select('*').order('created_at',{ascending:true});if(error){setSync('Sync error');showToast('Could not load team tasks: '+error.message);return;}tasks=(data||[]).map(fromDb);render();setSync('Live');}
+  async function startRealtime(){if(realtimeChannel)await sb.removeChannel(realtimeChannel);realtimeChannel=sb.channel('ipqc-team-tasks').on('postgres_changes',{event:'*',schema:'public',table:'tasks'},()=>loadCloudTasks()).subscribe(status=>{if(status==='SUBSCRIBED')setSync('Live updates on');});}
+  async function enterApp(session){currentUser=session.user;const {data:profile,error}=await sb.from('profiles').select('full_name,role').eq('id',currentUser.id).single();if(error){$('authStatus').textContent='Profile could not be loaded: '+error.message;return;}currentProfile=profile;$('accountLabel').textContent=(profile.full_name||currentUser.email)+' · '+profile.role;$('authScreen').style.display='none';$('trackerApp').style.display='block';$('removeVinBtn').style.display=profile.role==='admin'?'':'none';await loadCloudTasks();await startRealtime();const saved=localTasks();if(saved.length){$('migrationBanner').style.display='block';$('importLocalBtn').onclick=async()=>{const known=new Set(tasks.map(t=>String(t.id)));const fresh=saved.filter(t=>!known.has(String(t.id)));if(!fresh.length){showToast('No new local tasks to import');$('migrationBanner').style.display='none';return;}tasks.push(...fresh);await save();$('migrationBanner').style.display='none';showToast(fresh.length+' local tasks imported');};$('dismissImportBtn').onclick=()=>$('migrationBanner').style.display='none';}}
   const isDone = t => t.status === 'Completed';
   const isOverdue = t => !isDone(t) && t.date < todayKey;
   const showToast = message => { $('toast').textContent=message; $('toast').classList.add('show'); setTimeout(()=>$('toast').classList.remove('show'),1800); };
+  $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('authStatus').textContent='Signing in…';$('loginButton').disabled=true;const {data,error}=await sb.auth.signInWithPassword({email:$('loginEmail').value.trim(),password:$('loginPassword').value});$('loginButton').disabled=false;if(error){$('authStatus').textContent=error.message;return;}await enterApp(data.session);});
+  $('logoutBtn').addEventListener('click',async()=>{if(realtimeChannel)await sb.removeChannel(realtimeChannel);await sb.auth.signOut();currentUser=null;currentProfile=null;tasks=[];$('trackerApp').style.display='none';$('authScreen').style.display='grid';$('loginPassword').value='';$('authStatus').textContent='Signed out.';});
+
   function render() {
     const total=tasks.length, completed=tasks.filter(isDone).length, pending=tasks.filter(t=>!isDone(t)).length, overdue=tasks.filter(isOverdue).length;
     $('totalStat').textContent=total; $('pendingStat').textContent=pending; $('completedStat').textContent=completed; $('overdueStat').textContent=overdue;
@@ -502,8 +519,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       const actions=document.createElement('div');actions.className='task-actions';
       if(!isDone(t)){
         const edit=document.createElement('button');edit.type='button';edit.className='icon-btn';edit.textContent='Edit';edit.addEventListener('click',e=>{e.stopPropagation();openModal(t);});
-        const del=document.createElement('button');del.type='button';del.className='icon-btn';del.textContent='Delete';del.addEventListener('click',e=>{e.stopPropagation();if(confirm('Delete this task?')){tasks=tasks.filter(x=>x.id!==t.id);save();render();showToast('Task deleted');}});
-        actions.append(edit,del);
+        const del=document.createElement('button');del.type='button';del.className='icon-btn';del.textContent='Delete';del.addEventListener('click',e=>{e.stopPropagation();if(confirm('Delete this task?')){tasks=tasks.filter(x=>x.id!==t.id);deleteCloudTasks([t.id]);render();showToast('Task deleted');}});
+        if(currentProfile?.role==='admin')actions.append(edit,del);else actions.append(edit);
       }
       row.append(check,body,actions);
       const toggleDetails=()=>{const existing=row.querySelector('.task-details');if(existing){existing.remove();row.setAttribute('aria-expanded','false');return;}const details=document.createElement('div');details.className='task-details';const addDetail=(label,value)=>{const line=document.createElement('div');const strong=document.createElement('span');strong.className='task-detail-label';strong.textContent=label;const content=document.createElement('span');content.textContent=value||'No remarks added.';line.append(strong,content);details.append(line);};addDetail('Task notes:',t.notes);if(isDone(t)){addDetail('Completion remarks:',t.completionRemarks);addDetail('Completed by:',t.completedBy);addDetail('Completed on:',t.completedDate?new Date(t.completedDate+'T00:00:00').toLocaleDateString(undefined,{day:'numeric',month:'long',year:'numeric'}):'Date not recorded');}row.append(details);row.setAttribute('aria-expanded','true');};
@@ -523,7 +540,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   function closeModal(){$('modalBackdrop').classList.remove('show');}
   $('addOtherTaskBtn').addEventListener('click',()=>openModal());
   $('addVinBtn').addEventListener('click',()=>{$('vinForm').reset();$('vinBackdrop').classList.add('show');$('newVin').focus();});
-  $('removeVinBtn').addEventListener('click',()=>{const entered=prompt('Enter the exact VIN to remove its tasks:');if(entered===null)return;const vin=entered.trim().replace(/\s+/g,'').toUpperCase();if(!vin){showToast('Enter a valid VIN');return;}const matches=tasks.filter(t=>String(t.vin||'').trim().replace(/\s+/g,'').toUpperCase()===vin);if(!matches.length){showToast('VIN not found');return;}if(!confirm(`Remove VIN ${vin} and permanently delete all ${matches.length} associated task${matches.length===1?'':'s'} (including completed tasks)?`))return;tasks=tasks.filter(t=>String(t.vin||'').trim().replace(/\s+/g,'').toUpperCase()!==vin);expandedVINs.delete(vin);save();render();showToast(`VIN removed · ${matches.length} tasks deleted`);});
+  $('removeVinBtn').addEventListener('click',()=>{const entered=prompt('Enter the exact VIN to remove its tasks:');if(entered===null)return;const vin=entered.trim().replace(/\s+/g,'').toUpperCase();if(!vin){showToast('Enter a valid VIN');return;}const matches=tasks.filter(t=>String(t.vin||'').trim().replace(/\s+/g,'').toUpperCase()===vin);if(!matches.length){showToast('VIN not found');return;}if(!confirm(`Remove VIN ${vin} and permanently delete all ${matches.length} associated task${matches.length===1?'':'s'} (including completed tasks)?`))return;const removedIds=matches.map(t=>t.id);tasks=tasks.filter(t=>String(t.vin||'').trim().replace(/\s+/g,'').toUpperCase()!==vin);expandedVINs.delete(vin);deleteCloudTasks(removedIds);render();showToast(`VIN removed · ${matches.length} tasks deleted`);});
   $('cancelVinBtn').addEventListener('click',()=>$('vinBackdrop').classList.remove('show'));
   $('vinBackdrop').addEventListener('click',e=>{if(e.target===$('vinBackdrop'))$('vinBackdrop').classList.remove('show');});
   const standardChecklist=['Product Check List','Config','120 Test','Torque Curve','4 Min','PDI','ELO Dyno','Road Test','Rework (PDI)'];
@@ -533,7 +550,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   const toggleWorkspace=()=>{const expanded=workspaceToggle.getAttribute('aria-expanded')==='true';workspaceToggle.setAttribute('aria-expanded',String(!expanded));workspaceNav.classList.toggle('collapsed',expanded);};
   workspaceToggle.addEventListener('click',toggleWorkspace);
   workspaceToggle.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleWorkspace();}});
-  $('sidebarToggle').addEventListener('click',()=>{const shell=document.querySelector('.shell');const collapsed=shell.classList.toggle('sidebar-collapsed');$('sidebarToggle').setAttribute('aria-expanded',String(!collapsed));});
+  const shellEl=document.querySelector('.shell');
+  if(window.matchMedia('(max-width:900px)').matches){shellEl.classList.add('sidebar-collapsed');$('sidebarToggle').setAttribute('aria-expanded','false');}
+  $('sidebarToggle').addEventListener('click',()=>{const collapsed=shellEl.classList.toggle('sidebar-collapsed');$('sidebarToggle').setAttribute('aria-expanded',String(!collapsed));});
+  shellEl.addEventListener('click',e=>{if(e.target===shellEl&&window.matchMedia('(max-width:900px)').matches){shellEl.classList.add('sidebar-collapsed');$('sidebarToggle').setAttribute('aria-expanded','false');}});
   $('cancelBtn').addEventListener('click',closeModal);
   $('modalBackdrop').addEventListener('click',e=>{if(e.target===$('modalBackdrop'))closeModal();});
   $('taskForm').addEventListener('submit',e=>{
@@ -549,9 +569,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   $('cancelCompletionBtn').addEventListener('click',closeCompletionModal);
   $('completionBackdrop').addEventListener('click',e=>{if(e.target===$('completionBackdrop'))closeCompletionModal();});
   $('confirmCompletionBtn').addEventListener('click',()=>{const name=$('completionName').value.trim();if(!name){$('completionName').setCustomValidity('Please enter the employee name.');$('completionName').reportValidity();$('completionName').addEventListener('input',()=> $('completionName').setCustomValidity(''),{once:true});return;}if(!pendingCompletionTask)return;const task=tasks.find(t=>t.id===pendingCompletionTask.id);if(!task){closeCompletionModal();showToast('Task not found. Please try again.');return;}task.status='Completed';task.completedDate=todayKey;task.completedBy=name;task.completionRemarks=$('completionRemarks').value.trim();save();pendingCompletionTask=null;$('completionBackdrop').classList.remove('show');$('completionForm').reset();render();showToast('Task completed');});
-  document.querySelectorAll('.nav button').forEach(btn=>btn.addEventListener('click',()=>{view=btn.dataset.view;document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b===btn));render();}));
+  document.querySelectorAll('.nav button').forEach(btn=>btn.addEventListener('click',()=>{view=btn.dataset.view;document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b===btn));render();if(window.matchMedia('(max-width:900px)').matches){shellEl.classList.add('sidebar-collapsed');$('sidebarToggle').setAttribute('aria-expanded','false');}}));
   ['searchInput','priorityFilter','categoryFilter'].forEach(id=>$(id).addEventListener(id==='searchInput'?'input':'change',render));
-  render();
+  sb.auth.getSession().then(({data})=>{if(data.session)enterApp(data.session);});
 })();
 </script>
 </body>
